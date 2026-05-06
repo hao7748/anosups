@@ -11,6 +11,12 @@ This package contains the code, test data, and pretrained model checkpoints need
 - `images/`: test images and ground-truth masks used for evaluation.
 - `results/`: output directory created after running the script.
 
+## Data Downloads
+
+The `images/` test image and ground-truth mask files can be downloaded from Google Drive:
+
+https://drive.google.com/drive/folders/13BcweT5KQrkBbCmUCEaatoZpumGEnsJU?usp=drive_link
+
 ## Environment
 
 Tested with Python 3.8, PyTorch 1.11.0, CUDA 11.3 on Ubuntu 20.04.
