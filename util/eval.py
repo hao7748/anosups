@@ -11,7 +11,7 @@ def _binarize(arr):
 
 
 def dice_coefficient(y_true, y_pred):
-    """Dice coefficient: 2*|A∩B| / (|A|+|B|)."""
+    """Dice coefficient: 2*|A&B| / (|A|+|B|)."""
     y_true_f = _binarize(y_true).flatten()
     y_pred_f = _binarize(y_pred).flatten()
     smooth = 1  # Laplace smoothing to avoid division by zero

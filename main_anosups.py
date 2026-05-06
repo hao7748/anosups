@@ -8,6 +8,42 @@ import os
 import random
 import statistics
 
+# Google Drive file IDs for each pretrained checkpoint.
+# Fill in the IDs for the models you have links for; leave None to skip auto-download.
+_MODEL_GDRIVE_IDS = {
+    '01':       '1ZzkC_F_qTWgoAf5NxB7Y52uct0y6jSRW',
+    '02':       '17M9brXW0Ps3uYz3rh0DwtnAlAn816NDX',
+    'hazelnut': '1khd6y3NfViZJrd9PcZiJxPjieCYug3Hp',
+}
+
+def ensure_model(data: str) -> str:
+    """Return checkpoint path, downloading from Google Drive if the file is missing."""
+    os.makedirs('./models', exist_ok=True)
+    path = f'./models/{data}-anosups.pth'
+    if os.path.exists(path):
+        return path
+
+    file_id = _MODEL_GDRIVE_IDS.get(data)
+    if file_id is None:
+        raise FileNotFoundError(
+            f"Model not found: {path}\n"
+            f"No download URL configured for dataset '{data}'. "
+            "Please add the Google Drive file ID to _MODEL_GDRIVE_IDS."
+        )
+
+    try:
+        import gdown
+    except ImportError:
+        raise ImportError("Run `pip install gdown` to enable automatic model download.")
+
+    url = f'https://drive.google.com/uc?id={file_id}'
+    print(f"Model not found at {path}. Downloading from Google Drive...")
+    gdown.download(url, path, quiet=False)
+    if not os.path.exists(path):
+        raise RuntimeError(f"Download failed - file not found after download: {path}")
+    print(f"Model saved to {path}.")
+    return path
+
 parser = argparse.ArgumentParser(description="cycle")
 parser.add_argument('--data', type=str, default="02", help='data type')
 parser.add_argument('--anomaly', type=str, default="line", help='anomaly type')
@@ -44,7 +80,7 @@ def get_hyper_paras(class_name, anomaly):
 
 
 def main():
-    chkpt_dir = './models/' + args.data + '-anosups.pth'
+    chkpt_dir = ensure_model(args.data)
     model_ano = prepare_model(chkpt_dir, 'mae_vit_large_patch16')
     print('Model loaded.')
 
@@ -59,7 +95,7 @@ def main():
     results_dict = {}
     start = time.time()
 
-    repeat = 5  # number of inference repeats per image
+    repeat = 1
     for i, img in enumerate(imgs):
         dice_list, iou_list = [], []
 
@@ -81,7 +117,6 @@ def main():
             dice_list.append(dice)
             iou_list.append(iou)
 
-        # average metrics over all repeats
         dice_avg = float(np.mean(dice_list))
         iou_avg  = float(np.mean(iou_list))
 
@@ -93,19 +128,18 @@ def main():
             'iou': iou_avg
         }
 
-        diceplotpicresult(i, prior, maskimg, rawimage, ground_truth, defect_c, savepath, save_image=True)
+        #diceplotpicresult(i, prior, maskimg, rawimage, ground_truth, defect_c, savepath, save_image=True)
     total_time = time.time() - start
 
     mean_dice = sum(v['dice'] for v in results_dict.values()) / len(results_dict)
     mean_iou = sum(v['iou'] for v in results_dict.values()) / len(results_dict)
     std_dice = statistics.stdev(v['dice'] for v in results_dict.values())
     std_iou = statistics.stdev(v['iou'] for v in results_dict.values())
-    # save per-image results
+    
     with open(os.path.join(savepath, f'{args.data}_{args.anomaly}_{args.degree}.txt'), 'w') as f:
         for key, value in results_dict.items():
             f.write(f"[{key}] Dice: {value['dice']:.4f}, IoU: {value['iou']:.4f}\n")
 
-    # print and save summary
     print(f'Total time: {total_time:.2f}s, Images: {len(imgs)}, Mean Dice: {mean_dice:.4f}, Mean IoU: {mean_iou:.4f}')
 
     with open(os.path.join(results_root(), f'summary_{_RUN_TS}.txt'), 'a') as file:
@@ -120,26 +154,29 @@ def main():
         file.write(line + '\n')
 
 if __name__ == "__main__":
-    datas=['01','02','hazelnut']
-    anomalys={'01': {'anomaly': ('line','color','hole')},
-           '02': {'anomaly': ('line','color','hole')},
-           'hazelnut':  {'anomaly': ('crack', 'cut', 'print', 'hole')}}    
-
+    data_anomaly_map = {
+        '01': ('line', 'color', 'hole'),
+        '02': ('line', 'color', 'hole'),
+        'hazelnut': ('crack', 'cut', 'print', 'hole')
+    }
     
-    for data in datas:
-        anomalies_list = anomalys[data]['anomaly']
-        for anomaly in anomalies_list:
-                args.data, args.anomaly=data,anomaly
-                hyper_paras = get_hyper_paras(args.data, args.anomaly)
-                args.a,args.b,args.c=hyper_paras['threshold']
-
-                if 'degree' in hyper_paras:
-                    degrees=hyper_paras['degree']
-                    for degree in degrees:
-                        args.degree=degree
-                        print(args)
-                        main()
-                else:
-                    args.degree='no'
-                    print(args)
-                    main()
+    if args.data not in data_anomaly_map:
+        raise ValueError(f"Unsupported data type: {args.data}. Supported types: {list(data_anomaly_map.keys())}")
+    
+    anomalies_list = data_anomaly_map[args.data]
+    
+    for anomaly in anomalies_list:
+        args.anomaly = anomaly
+        hyper_paras = get_hyper_paras(args.data, args.anomaly)
+        args.a, args.b, args.c = hyper_paras['threshold']
+        
+        if 'degree' in hyper_paras:
+            degrees = hyper_paras['degree']
+            for degree in degrees:
+                args.degree = degree
+                print(args)
+                main()
+        else:
+            args.degree = 'no'
+            print(args)
+            main()

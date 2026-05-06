@@ -22,7 +22,7 @@ def denorm(img):
 
 def normalize_image(img):
     if isinstance(img, torch.Tensor):
-        img = img.detach().cpu().numpy()  # convert tensor → numpy
+        img = img.detach().cpu().numpy()  # convert tensor -> numpy
     if img.dtype == np.float32 or img.dtype == np.float64:
         return np.clip(img, 0, 1)
     else:

@@ -10,11 +10,10 @@ This package contains the code, test data, and pretrained model checkpoints need
 - `models/`: pretrained checkpoints for datasets `01`, `02`, and `hazelnut`.
 - `images/`: test images and ground-truth masks used for evaluation.
 - `results/`: output directory created after running the script.
-- `guidance/`: IJDS submission and reproducibility templates provided by the journal.
 
 ## Environment
 
-Tested with Python 3.10+.
+Tested with Python 3.8, PyTorch 1.11.0, CUDA 11.3 on Ubuntu 20.04.
 
 Install dependencies with:
 
@@ -24,10 +23,16 @@ pip install -r requirements.txt
 
 ## How to Run
 
-Run from the `anosups_test` directory:
+Run from the `anosups_test_no` directory:
 
 ```bash
-python main_anosups.py
+python main_anosups.py --data <dataset>
+```
+
+where `<dataset>` is one of `01`, `02`, or `hazelnut`. To run all datasets sequentially:
+
+```bash
+bash run_all_datasets.sh
 ```
 
 The script automatically evaluates:
@@ -48,16 +53,19 @@ results/main_anosups_YYYY-MM-DD_HH-MM-SS/
 
 Outputs include:
 
-- per-case visualization images
 - per-case text files containing Dice and IoU values
 - a run summary text file with mean Dice, mean IoU, standard deviations, number of images, and total run time
+
+Per-case visualization images can be enabled by uncommenting the following line in `main_anosups.py`:
+
+```python
+#diceplotpicresult(i, prior, maskimg, rawimage, ground_truth, defect_c, savepath, save_image=True)
+```
+
+Visualization is disabled by default to reduce runtime and storage usage.
 
 ## Reproducibility Scope
 
 This package reproduces the inference and evaluation outputs produced by the provided pretrained checkpoints on the included test datasets.
 
 This package does not include training data or full training pipelines for reproducing checkpoints from scratch.
-
-## Notes for IJDS Submission
-
-For IJDS final production submission, this package can be included in the required data/code `.zip` together with a completed reproducibility report. See files in `guidance/` for the journal-provided templates and instructions.
